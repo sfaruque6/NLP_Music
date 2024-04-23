@@ -1,4 +1,4 @@
-
+import pandas as pd
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
@@ -6,13 +6,16 @@ from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import wordnet as wn
 from collections import defaultdict
 import operator
+import json
 
 # Ensure NLTK resources are downloaded
 nltk.download('wordnet')
 nltk.download('stopwords')
 
-
 def generate_summary(text, num_keywords=10):
+    if not isinstance(text, str):
+        return ["No lyrics available"]
+
     # Tokenize the text into sentences
     sentences = sent_tokenize(text)
     
@@ -51,7 +54,6 @@ def generate_summary(text, num_keywords=10):
     for keyword in sorted_keywords:
         synsets = wn.synsets(keyword)
         if synsets:
-            # Add hypernyms of the first sense of the word
             hypernyms = synsets[0].hypernyms()
             if hypernyms:
                 inferred_word = hypernyms[0].lemmas()[0].name()
@@ -64,44 +66,23 @@ def generate_summary(text, num_keywords=10):
     all_keywords = list(set(sorted_keywords + inferred_keywords))
     return all_keywords[:10]
 
-# Example usage
-text = """
-There's a pain within that I can't define
-There's an empty space where your love used to shine
-From the night we met 'til the day you died
-Do you think I wished?
-Do you still believe I tried?
-All too soon we were divided
-And life had just begun
-Will you revive from the chaos in my mind
-Where we still are bound together?
-Will you be there waiting by the gates of dawn
-When I close my eyes forever?
-I belong to you, you belong to me
-It's the way things are, always meant to be
-Like the morning star and the rising sun
-You convey my life and forgive me what I've done
-All too soon we were divided
-Into darkness and light
-Will you revive from the chaos in my mind
-Where we still are bound together?
-Will you be there waiting by the gates of dawn
-When I close my eyes forever?
-Save me
-Reverse how I'm thinking of you
-Every breath I take brings me closer
-Closer to forever, to you
-I'm waiting for the day that I'm gone!
-All too soon we were divided
-And life had just begun
-Will you revive from the chaos in my mind
-Where we still are bound together?
-Will you be there waiting by the gates of dawn
-When I close my eyes forever?
-Will you be there waiting by the gates of dawn
-When I close my eyes forever?
-"""
+# Load CSV and process
+df = pd.read_csv('spotify_songs.csv', nrows=1000)
 
-summary = generate_summary(text, 1)
-print("Summary:")
-print(summary)
+# Generate summaries and prepare the data structure
+result_data = []
+for _, row in df.iterrows():
+    summary_keywords = generate_summary(row['lyrics'])
+    entry = {
+        'track_name': row['track_name'],
+        'track_artist': row['track_artist'],
+        'playlist_genre': row['playlist_genre'],
+        'generated_summary': summary_keywords
+    }
+    result_data.append(entry)
+
+# Save to JSON
+with open('song_summaries.json', 'w') as f:
+    json.dump(result_data, f, indent=4)
+
+print("JSON file with song summaries has been created successfully.")
